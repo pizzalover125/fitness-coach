@@ -1,0 +1,27 @@
+{
+ "code": "0722252100900",
+ "product": {
+  "brands": "CLIF",
+  "nutriments": {
+   "energy-kcal_100g": 367.647058823529,
+   "energy_100g": 1710.29411764706,
+   "proteins_100g": 14.7058823529412,
+   "carbohydrates_100g": 63.2352941176471,
+   "fat_100g": 8.82352941176471,
+   "fiber_100g": 7.35294117647059,
+   "sugars_100g": 25,
+   "sodium_100g": 0.000191,
+   "salt_100g": 0.0004775
+  },
+  "nutrition_data": "on",
+  "nutrition_data_prepared_per": "100g",
+  "product_name": "CHOCOLATE CHIP ENERGY BAR",
+  "product_quantity": 68.0388555,
+  "product_quantity_unit": "g",
+  "quantity": "2.40 oz (68 g)",
+  "serving_quantity": 68,
+  "serving_size": "1 bar (68 g)"
+ },
+ "status": 1,
+ "status_verbose": "product found"
+}

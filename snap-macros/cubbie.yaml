@@ -1,0 +1,7 @@
+# For Cubbie versions that install packages from this file (organizers' guide of 2026-10-19).
+# Newer Cubbie versions ignore it and run the Setup section in SKILL.md instead.
+cubbie: 1
+dependencies:
+  pip: ["zxing-cpp==3.1.1", "pillow==12.3.0"]
+network:
+  runtime: ["world.openfoodfacts.org"]
