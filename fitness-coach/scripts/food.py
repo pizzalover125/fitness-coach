@@ -116,6 +116,10 @@ def stem(w):
 
 
 STOPWORDS = {"and", "or", "with", "without", "in", "of", "nf", "ns", "nfs", "a", "the"}
+# Preparations that change nutrition a lot; only match them when asked for.
+PREP_WORDS = {stem(w) for w in ("fried", "coated", "breaded", "battered", "glazed", "sweetened", "stuffed", "creamed",
+                                 "added", "glutinous", "imitation", "gluten", "evaporated", "condensed")}
+MILD_WORDS = {stem(w) for w in ("canned", "skin", "dehydrated", "frozen")}
 
 
 def words(text):
@@ -139,13 +143,13 @@ def food_by_id(fid):
     raise Problem(f"No USDA food with id {fid}. Run search first and use an id it prints.")
 
 
-def cmd_search(args):
-    query = words(args.query)
-    if not query:
-        raise Problem("Give a food name to search for.")
+def rank_foods(query_text, rows=None, ingredient=False):
+    """USDA rows matching a food name, best first. Pass rows (a list from load_foods) to reuse them.
+    ingredient=True prefers SR Legacy's single ingredients ("Chicken, breast, raw") over prepared dishes."""
+    query = words(query_text)
     query_set = set(query)
     scored = []
-    for row in load_foods():
+    for row in rows if rows is not None else load_foods():
         desc = words(row["name"])
         hits = len(query_set & set(desc))
         if not hits:
@@ -154,12 +158,25 @@ def cmd_search(args):
         # penalize extra foods in the first segment ("Beans and white rice", "Banana split").
         head = set(words(row["name"].split(",")[0])) - STOPWORDS
         score = (2 * hits + 0.5 * len(query_set & head) + (desc[0] in query_set)
-                 - 0.6 * len(head - query_set) - 0.02 * len(desc) + 0.1 * (row["src"] == "fndds"))
+                 - 0.6 * len(head - query_set) - 0.02 * len(desc) + 0.1 * (row["src"] == "fndds")
+                 - 0.8 * len((set(desc) & PREP_WORDS) - query_set) - 0.4 * len((set(desc) & MILD_WORDS) - query_set))
+        if ingredient:
+            # Prefer single ingredients, and the variety named right after the food ("Oil, olive").
+            parts = row["name"].split(",")
+            second = set(words(parts[1])) - STOPWORDS if len(parts) > 1 else set()
+            score += 0.8 * (row["src"] == "sr") - 0.3 * len(second - query_set)
         scored.append((score, row))
     scored.sort(key=lambda x: -x[0])
+    return [row for _, row in scored]
+
+
+def cmd_search(args):
+    if not words(args.query):
+        raise Problem("Give a food name to search for.")
+    scored = rank_foods(args.query)
     if not scored:
         raise Problem(f'No USDA food matches "{args.query}". Try a simpler name, or estimate it from the web.')
-    for _, row in scored[:args.limit]:
+    for row in scored[:args.limit]:
         per = {k: row[k] or 0 for k in KEYS}
         portions = "; ".join(p.replace("=", " = ") + " g" for p in row["portions"].split("|") if p) or "none listed"
         print(f"{row['id']} | {row['name']}\n  per 100 g: {fmt_totals(per)}\n  portions: {portions}")

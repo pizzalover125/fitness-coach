@@ -1,0 +1,56 @@
+{
+  "recipes": [
+    {
+      "name": "Chipotle chicken burrito bowls",
+      "cook": "2026-10-26",
+      "minutes": 30,
+      "servings": 2,
+      "covers": ["2026-10-26 lunch", "2026-10-27 lunch"],
+      "ingredients": [
+        {"item": "chicken breast raw", "grams": 450, "qty": "1 lb"},
+        {"item": "rice white cooked", "grams": 400, "qty": "2 cups cooked"},
+        {"item": "black beans canned", "grams": 240, "qty": "1 can, drained"},
+        {"item": "salsa", "grams": 120, "qty": "1/2 cup"},
+        {"item": "greek yogurt plain", "grams": 100, "qty": "1/2 cup (sour cream swap)"},
+        {"item": "olive oil", "grams": 14, "qty": "1 tbsp"},
+        {"item": "chipotle chili powder", "qty": "2 tsp"},
+        {"item": "lime", "count": 1, "qty": "1"}
+      ],
+      "steps": [
+        "Start 1 cup dry rice in the rice cooker.",
+        "Cube the chicken, toss with oil, chili powder and a pinch of salt.",
+        "Cook in a hot pan 7-8 min until no pink remains (165 F inside).",
+        "Warm the beans in the microwave 2 min.",
+        "Split rice, beans and chicken into 2 containers; top with salsa, yogurt and lime."
+      ],
+      "remix": {"2026-10-27 lunch": "Roll it into a tortilla with hot sauce for a burrito you can eat walking to class."},
+      "storage": "Fridge, up to 3 days. Keep the yogurt separate until you eat."
+    },
+    {
+      "name": "Korean-style turkey rice bowls",
+      "cook": "2026-10-26",
+      "minutes": 25,
+      "servings": 2,
+      "covers": ["2026-10-26 dinner", "2026-10-28 dinner"],
+      "ingredients": [
+        {"item": "ground turkey raw", "grams": 454, "qty": "1 lb (thaw Sunday night)"},
+        {"item": "rice white cooked", "grams": 400, "qty": "2 cups cooked"},
+        {"item": "spinach raw", "grams": 150, "qty": "5 cups"},
+        {"item": "egg whole raw", "grams": 100, "count": 2, "qty": "2"},
+        {"item": "soy sauce", "grams": 30, "qty": "2 tbsp"},
+        {"item": "gochujang", "qty": "1 tbsp (or sriracha)"},
+        {"item": "garlic", "grams": 9, "qty": "3 cloves"},
+        {"item": "sesame oil", "grams": 9, "qty": "2 tsp"}
+      ],
+      "steps": [
+        "Brown the turkey with garlic 6-7 min, breaking it up.",
+        "Stir in soy sauce and gochujang; cook 1 min.",
+        "Wilt the spinach in the same pan, 1 min.",
+        "Fry 2 eggs.",
+        "Serve over rice with an egg on top; pack the second bowl without the egg and fry a fresh one Wednesday."
+      ],
+      "remix": {"2026-10-28 dinner": "Fry a fresh egg and add kimchi or cucumber for crunch; post-workout, add an extra 1/2 cup rice."},
+      "storage": "Fridge, up to 3 days."
+    }
+  ]
+}

@@ -1,21 +1,24 @@
 ---
 name: fitness-coach
-description: A gym and nutrition coach in the thread that logs meals from photos, barcodes or text, builds workout plans, puts them in Google Calendar and reminds the student before each session. Use whenever the student sends food, a snack, a barcode or a nutrition label, asks about calories, protein or macros, wants a workout, a gym split or a training schedule, asks how to do an exercise, says they finished or missed a workout, or talks about cutting, bulking or getting in shape.
+description: A gym and nutrition coach in the thread that logs meals, plans meal prep from the student's fridge and week, builds workout plans, puts them in Google Calendar and sends reminders. Use whenever the student sends food, a snack, a barcode or a nutrition label, asks about calories, protein or macros, says what ingredients they have, asks what to cook tonight or for the week, wants meal prep, recipes or a grocery list, mentions a meal already planned (dinner out, free food), wants a workout, a gym split or a training schedule, asks how to do an exercise, says they finished or missed a workout, or talks about cutting, bulking or getting in shape.
 ---
 
 # Fitness Coach
 
-Three jobs, all in the text thread:
+Four jobs, all in the text thread:
 1. **Track food:** from a photo, a barcode or a text, with calories and macros against daily goals.
-2. **Plan training:** find exercises, build a weekly plan, and fit it around the student's classes in Google
+2. **Meal prep:** turn what's in the fridge into recipes for tonight or the week, working around meals that are
+   already taken care of (dinner out, free food), with a shopping list and cook reminders.
+3. **Plan training:** find exercises, build a weekly plan, and fit it around the student's classes in Google
    Calendar.
-3. **Keep them going:** remind them before each session, log what they did, and show last time's numbers.
+4. **Keep them going:** remind them before each session, log what they did, and show last time's numbers.
 
 ## Ground rules
 
 - **Always reply.** A food log or a quick question takes at most 4 commands. Building and scheduling a plan
   may take more. If a command fails or data is missing, reply with your best answer marked "(rough estimate)".
-- Run commands from this Skill's folder: `python3 scripts/food.py ...` and `python3 scripts/workouts.py ...`.
+- Run commands from this Skill's folder: `python3 scripts/food.py ...`, `python3 scripts/meals.py ...` and
+  `python3 scripts/workouts.py ...`.
 - Pass the student's **local** date as `--date YYYY-MM-DD` and times as `HH:MM`. The sandbox clock may be in
   another time zone.
 - Output lines starting with `ERROR:` tell you what to do next.
@@ -71,7 +74,77 @@ numbers are estimates; say so the first time.
 **What's left / weekly:** run `python3 scripts/food.py today --date <date>` or
 `python3 scripts/food.py week --date <date>`.
 
-## Part 2: Workouts
+## Part 2: Meal prep
+
+The student tells you what they have and what's already planned. You plan what to cook, when, and in what
+amounts. The script does the bookkeeping. Before writing any recipes, read `references/meal-prep.md`: it has
+the recipe rules and the JSON format.
+
+### Collect what you need
+
+Save each thing the moment the student mentions it, even mid-conversation.
+
+- **Food they have** ("I have chicken, rice, eggs and some spinach"):
+  - Run `python3 scripts/meals.py pantry add "chicken breast 2 lb" "rice" "eggs 12" "spinach" --date <date>`.
+  - Add `--frozen` for frozen items.
+  - Pass each item as its own argument.
+  - When something comes from a fridge photo, list what you see and include amounts if you can tell.
+- **Meals already taken care of** ("dinner Friday with friends", "free food at the hackathon Sunday", "dining
+  hall lunch on weekdays"):
+  - Run `python3 scripts/meals.py fixed add --date <date> --meal <breakfast|lunch|dinner|snack> --note "<what>"`.
+  - Add `--kcal <n>` if they know it.
+  - For something that repeats: `--repeat weekdays` (or `mon,wed`) `--until <date>`.
+- **Preferences:** ask once, then save. The first time, ask in one message with defaults: "Any allergies or foods
+  you avoid? Kitchen setup (stove, microwave only, rice cooker)? Max cooking time? Cook fresh or batch for 3
+  days?"
+  - Run `python3 scripts/meals.py prefs --allergies peanuts --diet vegetarian --dislikes mushrooms --cuisines mexican,korean --equipment stove,microwave --max-minutes 30 --batch 3 --budget 40`.
+  - Allergies are hard rules. The script blocks recipes that break them.
+
+### Plan
+
+1. Run `python3 scripts/meals.py context --date <start date> --days <1|3|7> --meals <lunch,dinner|dinner|breakfast,lunch,dinner>`.
+   - "What should I cook tonight" means `--days 1 --meals dinner`.
+   - "Meal prep for the week" means `--days 7`.
+   - The output lists:
+     - Every slot as open or fixed.
+     - A calorie and protein target for each open slot, adjusted for fixed meals and training days.
+     - What's going bad first.
+     - Suggested cook sessions.
+2. Write the recipes as JSON, following `references/meal-prep.md`, to `~/.config/fitness-coach/plan.json`.
+3. Run `python3 scripts/meals.py plan save --file ~/.config/fitness-coach/plan.json`.
+   - Fix any `ERROR:` and save again.
+   - Check the `matched:` lines, and fix a clearly wrong match.
+4. Text the plan:
+   1. One line per recipe: what, when, calories and protein a serving.
+   2. The shopping list grouped by aisle.
+   3. "Want reminders to shop, thaw, cook and pack lunch?"
+
+   For "tonight" requests, skip the plan format and send the recipe itself: ingredients plus 4–6 short steps.
+
+### Day to day
+
+- **Full recipe:** `python3 scripts/meals.py recipe <number or name>`.
+- **"What am I eating today?":** `python3 scripts/meals.py today --date <date>`. It covers what to cook, which
+  leftover to eat and its remix, what to thaw tonight, and the fixed meals.
+- **They ate a planned meal:** `python3 scripts/meals.py eat --date <date> --meal <meal>`. It logs that serving to
+  the food log, so don't log it again with `food.py`.
+- **They cooked a batch:** `python3 scripts/meals.py cooked <number or name> --date <date>`. It takes the
+  ingredients out of the pantry.
+- **Groceries:** `python3 scripts/meals.py shopping`. On yes, add the list to the student's Google Tasks.
+- **Reminders:** run `python3 scripts/meals.py reminders` for the suggested times:
+  - groceries the day before
+  - thaw the night before
+  - cook 45 min after that day's workout
+  - pack lunch in the morning
+
+  Create those check-ins only after a yes. Each should name the recipe and say to run `meals.py today` for
+  details.
+- **Plans change** ("we're getting pizza tonight instead"):
+  1. Add it as a fixed meal.
+  2. Run `context` again for the remaining days.
+  3. Move the uncooked recipe to an open slot, and save again.
+
+## Part 3: Workouts
 
 ### Find an exercise or learn one
 
@@ -149,6 +222,15 @@ Chicken rice bowl ~ 460 kcal
 P 48g · C 42g · F 9g · fiber 2g
 Today: 1,320 / 2,400 kcal · 96 / 160g protein
 Guessed 150 g chicken. Off? Reply "less rice" or "undo".
+```
+
+```text
+Meal prep, Mon-Wed (Tue dinner out and Wed hackathon lunch skipped):
+1. Chipotle chicken burrito bowls: Mon + Tue lunch, ~760 kcal, 68g protein
+2. Korean turkey rice bowls: Mon + Wed dinner, ~740 kcal, 59g protein
+Uses your chicken before it goes bad Tuesday.
+Need: lime, garlic, gochujang, sesame oil.
+Want reminders to thaw, cook and pack lunch?
 ```
 
 ```text
