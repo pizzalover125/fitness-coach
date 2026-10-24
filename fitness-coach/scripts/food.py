@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""snap-macros: food lookup, barcode lookup and a daily macro log.
+"""fitness-coach food log: food lookup, barcode lookup and a daily macro log.
 
 Standard library only. Barcode *images* also need zxing-cpp and Pillow (see SKILL.md, Setup);
 without them, read the digits under the barcode and pass them to `barcode`.
@@ -33,11 +33,11 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 FOODS_FILE = SKILL_DIR / "assets" / "foods.tsv.gz"
 SAMPLE_PRODUCT = SKILL_DIR / "assets" / "sample_product.json"
-VENV = Path.home() / ".local" / "share" / "venvs" / "snap-macros"
+VENV = Path.home() / ".local" / "share" / "venvs" / "fitness-coach"
 OFF_URL = "https://world.openfoodfacts.org/api/v2/product/{code}.json"
 OFF_FIELDS = "product_name,brands,quantity,serving_size,serving_quantity,nutriments"
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
-USER_AGENT = "snap-macros/1.0 (https://github.com/pizzalover125/snap-macros)"
+USER_AGENT = "fitness-coach/1.0 (https://github.com/pizzalover125/fitness-coach)"
 KEYS = ["kcal", "protein", "carbs", "fat", "fiber", "sugar", "sodium"]
 LABELS = {"protein": "P", "carbs": "C", "fat": "F"}
 
@@ -51,7 +51,7 @@ class Problem(Exception):
 # ---------- state ----------
 
 def state_dir(sample):
-    base = Path(os.environ.get("SKILL_DATA_DIR") or Path.home() / ".config" / "snap-macros")
+    base = Path(os.environ.get("SKILL_DATA_DIR") or Path.home() / ".config" / "fitness-coach")
     return base / "sample" if sample else base
 
 
@@ -488,7 +488,7 @@ def cmd_goals(args):
 # ---------- main ----------
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="snap-macros food and macro log")
+    ap = argparse.ArgumentParser(description="fitness-coach food and macro log")
     ap.add_argument("--sample", action="store_true", help="bundled sample data; separate saved state")
     sub = ap.add_subparsers(dest="cmd", required=True)
 

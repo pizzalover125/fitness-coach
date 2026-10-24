@@ -1,8 +1,8 @@
-"""Build snap-macros/assets/foods.tsv.gz from USDA FoodData Central downloads.
+"""Build fitness-coach/assets/foods.tsv.gz from USDA FoodData Central downloads.
 
 Not part of the Skill: run it once when the USDA data changes.
 
-    python tools/build_foods.py <sr_legacy_csv_dir> <surveyDownload.json> snap-macros/assets/foods.tsv.gz
+    python tools/build_foods.py <sr_legacy_csv_dir> <surveyDownload.json> fitness-coach/assets/foods.tsv.gz
 
 Sources (public domain, https://fdc.nal.usda.gov/download-datasets/):
   SR Legacy CSV  FoodData_Central_sr_legacy_food_csv_2018-04.zip
