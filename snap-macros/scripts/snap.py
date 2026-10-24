@@ -6,7 +6,8 @@ without them, read the digits under the barcode and pass them to `barcode`.
 
 Commands (dates are the student's local date, YYYY-MM-DD):
   search "<food>" [--limit 6]           USDA foods matching the name, per 100 g, with common portions
-  barcode <digits> | --image <path>     Packaged product from Open Food Facts
+  product "<brand and name>" [--limit 3]  Packaged products by name (Open Food Facts search)
+  barcode <digits> | --image <path> [--log --date D [--amount 2srv|50]]   Packaged product from Open Food Facts
   log --date D --meal "<name>" (--food ID=G | --product CODE=G | --product CODE=Nsrv | --custom "...")...
   undo --date D                         Remove the last entry of that day
   today --date D                        That day's entries and totals vs goals
@@ -35,7 +36,8 @@ SAMPLE_PRODUCT = SKILL_DIR / "assets" / "sample_product.json"
 VENV = Path.home() / ".local" / "share" / "venvs" / "snap-macros"
 OFF_URL = "https://world.openfoodfacts.org/api/v2/product/{code}.json"
 OFF_FIELDS = "product_name,brands,quantity,serving_size,serving_quantity,nutriments"
-USER_AGENT = "snap-macros/1.0 (Cubbie Hackathon Skill)"
+OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
+USER_AGENT = "snap-macros/1.0 (https://github.com/pizzalover125/snap-macros)"
 KEYS = ["kcal", "protein", "carbs", "fat", "fiber", "sugar", "sodium"]
 LABELS = {"protein": "P", "carbs": "C", "fat": "F"}
 
@@ -204,17 +206,12 @@ def decode_image(path):
 def fetch_product(code, sample):
     if sample:
         return json.loads(SAMPLE_PRODUCT.read_text(encoding="utf-8"))
-    url = OFF_URL.format(code=code) + "?" + urllib.parse.urlencode({"fields": OFF_FIELDS})
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
+        return http_json(OFF_URL.format(code=code) + "?" + urllib.parse.urlencode({"fields": OFF_FIELDS}))
+    except Problem as e:
+        if "HTTP 404" in str(e):
             return {"status": 0}
-        raise Problem(f"Open Food Facts returned HTTP {e.code}. Try again in a minute.", code=4)
-    except (urllib.error.URLError, TimeoutError) as e:
-        raise Problem(f"Couldn't reach Open Food Facts ({e}). Try again in a minute.", code=4)
+        raise
 
 
 def product_from_off(code, data):
@@ -237,10 +234,59 @@ def product_from_off(code, data):
         serving_g = float(p.get("serving_quantity")) or None
     except (TypeError, ValueError):
         serving_g = None
-    brand, title = p.get("brands", "").split(",")[0].strip(), p.get("product_name", "").strip()
-    name = title if brand.lower() in title.lower() else " ".join(x for x in [brand, title] if x)
+    brands = p.get("brands") or ""
+    brands = ", ".join(brands) if isinstance(brands, list) else brands
+    brand, title = brands.split(",")[0].strip(), (p.get("product_name") or "").strip()
+    squash = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())  # "Miss Vickies" matches "Miss Vickie's"
+    name = title if squash(brand) in squash(title) else " ".join(x for x in [brand, title] if x)
     return {"code": code, "name": name or f"Product {code}", "per100": per100,
             "serving_g": serving_g, "serving_size": p.get("serving_size"), "package": p.get("quantity")}
+
+
+def http_json(url):
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise Problem(f"Open Food Facts returned HTTP {e.code}. Try again in a minute.", code=4)
+    except (urllib.error.URLError, TimeoutError, ValueError) as e:
+        raise Problem(f"Couldn't reach Open Food Facts ({e}). Try again in a minute.", code=4)
+
+
+def print_product(prod):
+    print(f"{prod['name']} (barcode {prod['code']})")
+    if prod["package"]:
+        print(f"  package: {prod['package']}")
+    print(f"  per 100 g: {fmt_totals({k: v or 0 for k, v in prod['per100'].items()})}")
+    if prod["serving_g"]:
+        print(f"  per serving ({prod['serving_size'] or fmt_g(prod['serving_g']) + ' g'}): "
+              f"{fmt_totals(scale(prod['per100'], prod['serving_g']))}")
+        print(f"  log with: --product {prod['code']}=1srv  (or ={fmt_g(prod['serving_g'])} grams)")
+    else:
+        print(f"  no serving size listed; log with: --product {prod['code']}=<grams>")
+
+
+def cmd_product(args):
+    """Packaged products by brand and name, for when there's no barcode to read."""
+    if args.sample:
+        hits = [json.loads(SAMPLE_PRODUCT.read_text(encoding="utf-8"))["product"] | {"code": "0722252100900"}]
+    else:
+        query = urllib.parse.urlencode({"q": args.query, "page_size": 10, "fields": "code," + OFF_FIELDS})
+        hits = http_json(f"{OFF_SEARCH_URL}?{query}").get("hits") or []
+    state = load_state(args.sample)
+    found = []
+    for p in hits:
+        prod = product_from_off(p.get("code", ""), {"product": p})
+        if p.get("code") and prod["per100"]["kcal"] is not None:
+            state["products"][prod["code"]] = prod
+            found.append(prod)
+    if not found:
+        raise Problem(f'No packaged product with nutrition data matches "{args.query}". Ask for the barcode digits '
+                      "or a photo of the Nutrition Facts label.")
+    save_state(state, args.sample)
+    for prod in found[:args.limit]:
+        print_product(prod)
 
 
 def cmd_barcode(args):
@@ -267,19 +313,17 @@ def cmd_barcode(args):
     state = load_state(args.sample)
     state["products"][code] = prod
     save_state(state, args.sample)
-    print(f"{prod['name']} (barcode {code})")
-    if prod["package"]:
-        print(f"  package: {prod['package']}")
-    print(f"  per 100 g: {fmt_totals({k: v or 0 for k, v in prod['per100'].items()})}")
-    if prod["serving_g"]:
-        print(f"  per serving ({prod['serving_size'] or fmt_g(prod['serving_g']) + ' g'}): "
-              f"{fmt_totals(scale(prod['per100'], prod['serving_g']))}")
-        print(f"  log with: --product {code}=1srv  (or ={fmt_g(prod['serving_g'])} grams)")
-    else:
-        print(f"  no serving size listed; log with: --product {code}=<grams>")
+    print_product(prod)
     missing = [k for k, v in prod["per100"].items() if v is None]
     if missing:
         print(f"  not listed (counted as 0): {', '.join(missing)}")
+    if args.log:
+        amount = args.amount or ("1srv" if prod["serving_g"] else "")
+        if not amount:
+            raise Problem(f"{prod['name']} has no serving size. Ask how many grams and rerun with --amount <grams>.")
+        print()
+        cmd_log(argparse.Namespace(date=args.date, time=args.time, meal=None, food=[], custom=[],
+                                   product=[f"{code}={amount}"], sample=args.sample))
 
 
 # ---------- log ----------
@@ -453,12 +497,21 @@ def main(argv=None):
     s.add_argument("--limit", type=int, default=6)
     s.set_defaults(func=cmd_search)
 
+    pr = sub.add_parser("product")
+    pr.add_argument("query")
+    pr.add_argument("--limit", type=int, default=3)
+    pr.set_defaults(func=cmd_product)
+
     b = sub.add_parser("barcode")
     b.add_argument("code", nargs="?")
+    today_iso = date.today().isoformat()
     b.add_argument("--image")
+    b.add_argument("--log", action="store_true", help="also log it")
+    b.add_argument("--amount", help="with --log: grams (50) or servings (2srv); default 1 serving")
+    b.add_argument("--date", default=today_iso)
+    b.add_argument("--time")
     b.set_defaults(func=cmd_barcode)
 
-    today_iso = date.today().isoformat()
     lg = sub.add_parser("log")
     lg.add_argument("--date", default=today_iso)
     lg.add_argument("--time")
