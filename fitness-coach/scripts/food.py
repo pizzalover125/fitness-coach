@@ -27,7 +27,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -372,6 +372,11 @@ def find_product(state, code):
 
 
 def cmd_log(args):
+    if args.time:
+        try:
+            args.time = datetime.strptime(args.time, "%H:%M").strftime("%H:%M")
+        except ValueError:
+            raise Problem(f'--time "{args.time}" should be the local time as HH:MM (24-hour), e.g. 19:30.')
     state = load_state(args.sample)
     items, total = [], {k: 0 for k in KEYS}
     for spec in args.food:

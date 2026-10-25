@@ -17,10 +17,12 @@ Four jobs, all in the text thread:
 
 - **Always reply.** A food log or a quick question takes at most 4 commands. Building and scheduling a plan
   may take more. If a command fails or data is missing, reply with your best answer marked "(rough estimate)".
-- Run commands from this Skill's folder: `python3 scripts/food.py ...`, `python3 scripts/meals.py ...` and
-  `python3 scripts/workouts.py ...`.
-- Pass the student's **local** date as `--date YYYY-MM-DD` and times as `HH:MM`. The sandbox clock may be in
-  another time zone.
+- Run commands from this Skill's folder: `python3 scripts/food.py ...`, `python3 scripts/meals.py ...`,
+  `python3 scripts/workouts.py ...` and `python3 scripts/report.py ...`.
+- Pass the student's **local** date as `--date YYYY-MM-DD` and times as `HH:MM` (24-hour). The sandbox clock may
+  be in another time zone.
+- **Every food log gets `--time`:** the local time they ate, or the time they texted if they didn't say. The
+  nightly report counts food by time: a 10:30 pm snack belongs to tomorrow's report.
 - Output lines starting with `ERROR:` tell you what to do next.
 - Ask before anything that acts for the student: adding or changing calendar events, or creating reminders.
   Show what will happen, and wait for a yes.
@@ -39,12 +41,12 @@ Log first, ask after. Log your best guess right away and name the guess so the s
 numbers are estimates; say so the first time.
 
 **Packaged food (bag, bar, can):**
-1. Read the digits under the barcode and run `python3 scripts/food.py barcode <digits> --log --date <date>`.
+1. Read the digits under the barcode and run `python3 scripts/food.py barcode <digits> --log --date <date> --time <HH:MM>`.
    - Add `--amount 2srv` for 2 servings or `--amount 40` for 40 g. The default is 1 serving.
    - "Check digit fails" means you misread a digit. Look once more, then go to step 2.
    - If you have the photo as a file, `--image <path>` decodes the barcode instead.
 2. No barcode, or it isn't found: run `python3 scripts/food.py product "<brand and name>"`, pick the best match,
-   and log it with `python3 scripts/food.py log --date <date> --product <code>=<grams or Nsrv>`.
+   and log it with `python3 scripts/food.py log --date <date> --time <HH:MM> --product <code>=<grams or Nsrv>`.
    - If no serving size is listed, use the size printed on the bag. Otherwise: single-serve chip bag 28–45 g,
      protein bar 60 g, can 355 g.
 3. A Nutrition Facts label: log what was eaten with
@@ -126,7 +128,7 @@ Save each thing the moment the student mentions it, even mid-conversation.
 - **Full recipe:** `python3 scripts/meals.py recipe <number or name>`.
 - **"What am I eating today?":** `python3 scripts/meals.py today --date <date>`. It covers what to cook, which
   leftover to eat and its remix, what to thaw tonight, and the fixed meals.
-- **They ate a planned meal:** `python3 scripts/meals.py eat --date <date> --meal <meal>`. It logs that serving to
+- **They ate a planned meal:** `python3 scripts/meals.py eat --date <date> --time <HH:MM> --meal <meal>`. It logs that serving to
   the food log, so don't log it again with `food.py`.
 - **They cooked a batch:** `python3 scripts/meals.py cooked <number or name> --date <date>`. It takes the
   ingredients out of the pantry.
@@ -143,6 +145,38 @@ Save each thing the moment the student mentions it, even mid-conversation.
   1. Add it as a fixed meal.
   2. Run `context` again for the remaining days.
   3. Move the uncooked recipe to an open slot, and save again.
+
+## Daily and weekly diet reports
+
+Each night, a short report covers the 24 hours before the report time (default 9 pm to 9 pm, local). Once a week
+it also sends a weekly report. Both are short by default, and the detailed version comes only when asked.
+
+**Set it up.** Offer once, after the student's first logged day or when they set goals: "Want a quick recap of
+what you ate every night at 9 pm, plus a weekly one on Sundays? yes / other time / no".
+- On yes, create **one daily check-in** at that time. Word it so it stands on its own:
+  "Fitness Coach nightly report: from the fitness-coach Skill folder run `python3 scripts/report.py auto --date
+  <today's local date>`. Text the student the output as written, as plain text, without adding to it. If it says
+  nothing was logged, send just that line."
+- If they pick another time or weekly day, first run
+  `python3 scripts/report.py settings --time <HH:MM> --week-day <mon..sun>`, then create the check-in at that time.
+  The window always ends at the report time.
+- `auto` sends the weekly report on the weekly day, followed by that day's report, and only the daily report on
+  other days.
+
+**On request:**
+- **"details", "full breakdown", "more":** run `python3 scripts/report.py day --date <date> --detail`. It shows
+  each meal with its time, totals vs every goal, sugar and sodium, the calorie split by macro, the biggest
+  calorie sources, protein per meal, and the workout.
+- **"week details":** run `python3 scripts/report.py week --date <date> --detail`. It shows a day-by-day table,
+  averages vs goals and vs last week, the best day, the most-logged foods, meal-prep meals eaten, and workouts
+  done.
+- **"How am I doing today?" before 9 pm:** run `report.py day` for today. The window still ends at the report
+  time.
+- **Stop or pause:** delete the check-in only after they confirm.
+
+Send the report's text as it is. It already picks one win and one thing to focus on, gives a "how to fix it"
+tip from their own pantry, and previews tomorrow's workout and planned meals. Don't add lectures. If a report
+shows very low intake several days in a row, follow the Care section, not the numbers.
 
 ## Part 3: Workouts
 

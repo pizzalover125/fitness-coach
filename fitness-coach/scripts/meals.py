@@ -737,7 +737,7 @@ def cmd_eat(args):
         raise Problem(f"No planned recipe for {key}. Log it with food.py instead.")
     p = {k: v * args.servings for k, v in r["per_serving"].items()}
     spec = f"{r['name']};" + ";".join(f"{p[k]:.1f}" for k in food.KEYS)
-    food.cmd_log(argparse.Namespace(date=args.date, time=None, meal=f"{r['name']} (meal prep)", food=[],
+    food.cmd_log(argparse.Namespace(date=args.date, time=args.time, meal=f"{r['name']} (meal prep)", food=[],
                                     product=[], custom=[spec], sample=args.sample))
 
 
@@ -866,6 +866,7 @@ def main(argv=None):
     e.add_argument("--date", default=today_iso)
     e.add_argument("--meal", choices=MEALS, required=True)
     e.add_argument("--servings", type=float, default=1)
+    e.add_argument("--time", help="local HH:MM it was eaten")
     e.set_defaults(func=cmd_eat)
 
     ck = sub.add_parser("cooked")
